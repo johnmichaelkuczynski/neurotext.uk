@@ -570,6 +570,79 @@ export async function registerRoutes(app: Express): Promise<Express> {
   // Register payment routes
   registerPaymentRoutes(app);
   
+  // Simple Stripe webhook for payment link purchases
+  // This uses the direct payment link: https://buy.stripe.com/cNibJ33W8ddG2Laa1sdZ600
+  app.post("/webhook/stripe", async (req: Request, res: Response) => {
+    const Stripe = require('stripe');
+    
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.error("[Stripe Webhook] STRIPE_SECRET_KEY not configured");
+      return res.status(503).send("Stripe not configured");
+    }
+    
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    const sig = req.headers["stripe-signature"];
+    
+    if (!sig) {
+      console.error("[Stripe Webhook] No signature provided");
+      return res.status(400).send("No signature");
+    }
+    
+    let event;
+    try {
+      // Use raw body for signature verification
+      event = stripe.webhooks.constructEvent(
+        req.body,
+        sig,
+        process.env.STRIPE_WEBHOOK_SECRET
+      );
+    } catch (err: any) {
+      console.error("[Stripe Webhook] Signature verification failed:", err.message);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+    
+    console.log(`[Stripe Webhook] Received event: ${event.type}`);
+    
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object;
+      
+      try {
+        const customerEmail = session.customer_details?.email;
+        const amountTotal = session.amount_total; // Amount in cents
+        
+        if (!customerEmail) {
+          console.error("[Stripe Webhook] No customer email in session");
+          return res.status(400).send("No customer email");
+        }
+        
+        // Calculate credits: $1 = 1000 credits
+        const dollars = amountTotal / 100;
+        const credits = dollars * 1000;
+        
+        console.log(`[Stripe Webhook] Processing payment: ${customerEmail} paid $${dollars} for ${credits} credits`);
+        
+        // Find user by email
+        const user = await storage.getUserByEmail(customerEmail);
+        
+        if (!user) {
+          console.error(`[Stripe Webhook] User not found for email: ${customerEmail}`);
+          return res.status(400).send("User not found");
+        }
+        
+        // Add credits to user
+        await storage.addCreditsFromStripe(user.id, credits);
+        console.log(`[Stripe Webhook] Added ${credits} credits to user ${user.id} (${customerEmail})`);
+        
+        res.json({ received: true, credits });
+      } catch (error: any) {
+        console.error("[Stripe Webhook] Error processing payment:", error);
+        return res.status(500).send("Error processing payment");
+      }
+    } else {
+      res.json({ received: true });
+    }
+  });
+  
   // API health check endpoint
   app.get("/api/check-api", async (_req: Request, res: Response) => {
     const openai_key = process.env.OPENAI_API_KEY;
