@@ -27,6 +27,13 @@ The application employs a monorepo structure, separating client and server compo
     - **Coherence Meter**: Supports up to 5000-word inputs with Global Coherence Preservation Protocol. Includes specialized modes:
         - **Mathematical Proof System** (COHERENCE, COGENCY, MAX COHERENCE, MAXIMIZE TRUTH).
         - **Scientific-Explanatory Coherence Type**: Dual assessment of logical consistency and scientific accuracy, with rewrite function to correct pseudoscientific claims.
+    - **Screenplay Generator** (Jan 2026): Converts source material into properly formatted screenplays with:
+        - **Three-act structure**: 25% Act One, 50% Act Two, 25% Act Three
+        - **Beat placement**: Inciting incident (10%), midpoint reversal (50%), all-is-lost (75%), climax (90%)
+        - **Proper screenplay formatting**: FADE IN/OUT, scene headings (INT./EXT. LOCATION - DAY/NIGHT), action lines, character names in capitals, dialogue, parentheticals, transitions
+        - **Large-text chunking**: Handles any target word count (default 20,000 words) through chunked generation
+        - **Custom instructions**: Supports tone, genre, character focus, and creative direction customization
+        - **Visual storytelling only**: No internal thoughts, no camera directions, present tense throughout
     - **Text Model Validator**: Exclusively focused on the RECONSTRUCTION function for conservative charitable interpretation.
     - **AI Chat Assistant**: Provides conversation history and context from the Zhi Database.
     - **Conservative Reconstruction**: "Charitable Interpretation" mode for generating coherent essays articulating a text's unified argument, with advanced outline-first and cross-chunk strategies for medium and long documents. Features:
