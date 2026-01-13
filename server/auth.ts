@@ -128,7 +128,8 @@ export function setupAuth(app: Express) {
             // Check if user exists by email (link Google to existing account)
             user = await storage.getUserByEmail(email);
             if (user) {
-              // Update user with Google ID - would need another storage method
+              // Link Google ID to existing user account
+              await storage.linkGoogleToUser(user.id, googleId, displayName);
               await storage.updateUserLastActive(user.id);
               return done(null, user);
             }

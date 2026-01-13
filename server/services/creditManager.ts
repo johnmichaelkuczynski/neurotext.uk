@@ -35,12 +35,25 @@ export async function checkAndDeductCredits(
     };
   }
 
-  const deducted = await storage.deductCredits(userId, "stripe", cost);
+  // Get all credit buckets and deduct from those with positive balance
+  const allCredits = await storage.getAllUserCredits(userId);
+  let remaining = cost;
   
-  if (!deducted) {
+  for (const bucket of allCredits) {
+    if (remaining <= 0) break;
+    if (bucket.credits <= 0) continue;
+    
+    const toDeduct = Math.min(bucket.credits, remaining);
+    const deducted = await storage.deductCredits(userId, bucket.provider, toDeduct);
+    if (deducted) {
+      remaining -= toDeduct;
+    }
+  }
+  
+  if (remaining > 0) {
     return {
       success: false,
-      error: `Failed to deduct credits. Please try again or contact support.`,
+      error: `Failed to deduct all credits. Please try again or contact support.`,
     };
   }
 

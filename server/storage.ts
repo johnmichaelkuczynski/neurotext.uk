@@ -33,6 +33,7 @@ export interface IStorage {
   getUserByGoogleId(googleId: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createGoogleUser(googleId: string, email: string, displayName: string): Promise<User>;
+  linkGoogleToUser(userId: number, googleId: string, displayName: string): Promise<void>;
   updateUserLastActive(userId: number): Promise<void>;
   getTotalUserCredits(userId: number): Promise<number>;
   addCreditsFromStripe(userId: number, credits: number): Promise<void>;
@@ -145,6 +146,10 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return user;
+  }
+
+  async linkGoogleToUser(userId: number, googleId: string, displayName: string): Promise<void> {
+    await db.update(users).set({ googleId, displayName }).where(eq(users.id, userId));
   }
 
   async updateUserLastActive(userId: number): Promise<void> {
