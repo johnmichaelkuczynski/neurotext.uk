@@ -30,6 +30,12 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByGoogleId(googleId: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  createGoogleUser(googleId: string, email: string, displayName: string): Promise<User>;
+  updateUserLastActive(userId: number): Promise<void>;
+  getTotalUserCredits(userId: number): Promise<number>;
+  addCreditsFromStripe(userId: number, credits: number): Promise<void>;
   sessionStore: any;
   
   // Document operations
@@ -104,6 +110,58 @@ export class DatabaseStorage implements IStorage {
       .values(insertUser)
       .returning();
     return user;
+  }
+
+  async getUserByGoogleId(googleId: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.googleId, googleId));
+    return user || undefined;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
+  }
+
+  async createGoogleUser(googleId: string, email: string, displayName: string): Promise<User> {
+    // Generate a unique username from email
+    const baseUsername = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+    let username = baseUsername;
+    let counter = 1;
+    
+    // Ensure username is unique
+    while (await this.getUserByUsername(username)) {
+      username = `${baseUsername}${counter}`;
+      counter++;
+    }
+    
+    const [user] = await db
+      .insert(users)
+      .values({
+        username,
+        password: 'google-oauth-no-password', // Google users don't have passwords
+        email,
+        googleId,
+        displayName,
+      })
+      .returning();
+    return user;
+  }
+
+  async updateUserLastActive(userId: number): Promise<void> {
+    await db.update(users).set({ lastActiveAt: new Date() }).where(eq(users.id, userId));
+  }
+
+  async getTotalUserCredits(userId: number): Promise<number> {
+    const credits = await db.select().from(userCredits).where(eq(userCredits.userId, userId));
+    return credits.reduce((sum, c) => sum + c.credits, 0);
+  }
+
+  async addCreditsFromStripe(userId: number, credits: number): Promise<void> {
+    await db.insert(userCredits).values({
+      userId,
+      provider: 'stripe',
+      credits,
+    });
   }
 
   async createDocument(doc: InsertDocument): Promise<Document> {

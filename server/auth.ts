@@ -1,5 +1,6 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
+import { Strategy as GoogleStrategy, Profile } from "passport-google-oauth20";
 import { Express } from "express";
 import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
@@ -95,6 +96,56 @@ export function setupAuth(app: Express) {
       }
     }),
   );
+
+  // Google OAuth Strategy
+  const googleCallbackUrl = process.env.GOOGLE_CALLBACK_URL || 
+    (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}/auth/google/callback` : 
+    "https://neurotext.uk/auth/google/callback");
+  
+  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    passport.use(
+      new GoogleStrategy(
+        {
+          clientID: process.env.GOOGLE_CLIENT_ID,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+          callbackURL: googleCallbackUrl,
+        },
+        async (accessToken: string, refreshToken: string, profile: Profile, done: any) => {
+          try {
+            const googleId = profile.id;
+            const email = profile.emails?.[0]?.value || '';
+            const displayName = profile.displayName || email.split('@')[0];
+
+            // Check if user exists by Google ID
+            let user = await storage.getUserByGoogleId(googleId);
+            
+            if (user) {
+              // Update last active timestamp
+              await storage.updateUserLastActive(user.id);
+              return done(null, user);
+            }
+
+            // Check if user exists by email (link Google to existing account)
+            user = await storage.getUserByEmail(email);
+            if (user) {
+              // Update user with Google ID - would need another storage method
+              await storage.updateUserLastActive(user.id);
+              return done(null, user);
+            }
+
+            // Create new user
+            user = await storage.createGoogleUser(googleId, email, displayName);
+            return done(null, user);
+          } catch (error) {
+            return done(error);
+          }
+        }
+      )
+    );
+    console.log("[Auth] Google OAuth strategy configured");
+  } else {
+    console.log("[Auth] Google OAuth not configured - missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET");
+  }
 
   passport.serializeUser((user, done) => done(null, user.id));
   passport.deserializeUser(async (id: number, done) => {
@@ -199,8 +250,47 @@ export function setupAuth(app: Express) {
     });
   });
 
-  app.get("/api/user", (req, res) => {
+  app.get("/api/user", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    res.json(req.user);
+    
+    // Include total credits in user response
+    const totalCredits = await storage.getTotalUserCredits(req.user!.id);
+    res.json({
+      ...req.user,
+      totalCredits
+    });
+  });
+
+  // Google OAuth routes
+  app.get("/auth/google", passport.authenticate("google", { 
+    scope: ["profile", "email"] 
+  }));
+
+  app.get("/auth/google/callback", 
+    passport.authenticate("google", { 
+      failureRedirect: "/?login=failed" 
+    }),
+    (req, res) => {
+      console.log("[Auth] Google OAuth callback successful");
+      res.redirect("/");
+    }
+  );
+
+  // Logout route (GET for browser redirects)
+  app.get("/logout", (req, res, next) => {
+    req.logout((err) => {
+      if (err) return next(err);
+      res.redirect("/");
+    });
+  });
+
+  // API endpoint to get user credits
+  app.get("/api/credits", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    
+    const totalCredits = await storage.getTotalUserCredits(req.user!.id);
+    res.json({ credits: totalCredits });
   });
 }

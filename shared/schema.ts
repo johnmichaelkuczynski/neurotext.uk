@@ -2,7 +2,7 @@ import { pgTable, text, serial, integer, boolean, jsonb, timestamp, real } from 
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Updated User model - username/password authentication
+// Updated User model - username/password and Google OAuth authentication
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
@@ -10,6 +10,8 @@ export const users = pgTable("users", {
   email: text("email"), // Optional email field
   createdAt: timestamp("created_at").defaultNow().notNull(),
   lastActiveAt: timestamp("last_active_at").defaultNow().notNull(),
+  googleId: text("google_id").unique(), // Google OAuth ID
+  displayName: text("display_name"), // Display name from Google profile
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
