@@ -245,11 +245,6 @@ function Navigation() {
         </div>
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-3">
-            {user && (
-              <div className="bg-primary-foreground/10 px-3 py-1.5 rounded-md">
-                <CreditBalance />
-              </div>
-            )}
             
             <Button 
               variant="ghost" 
@@ -264,8 +259,11 @@ function Navigation() {
             
             <div className="flex items-center gap-4 border-l border-primary-foreground/20 pl-4">
               {user ? (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <span className="text-sm">Welcome, {(user as any).displayName || user.username}!</span>
+                  <div className="bg-primary-foreground/20 px-2 py-1 rounded">
+                    <CreditBalance />
+                  </div>
                   <a 
                     href="https://buy.stripe.com/cNibJ33W8ddG2Laa1sdZ600"
                     target="_blank"

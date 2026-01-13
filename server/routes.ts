@@ -26,6 +26,7 @@ import {
   getPartialOutput,
   type ProcessingProgress 
 } from "./services/dbEnforcedReconstruction";
+import { checkAndDeductCredits, CREDIT_COSTS, checkUnlimited } from "./services/creditManager";
 
 
 // Configure multer for file uploads
@@ -961,6 +962,25 @@ export async function registerRoutes(app: Express): Promise<Express> {
           formattedReport: "Error: Document content is required",
           provider: provider
         });
+      }
+      
+      // Check and deduct credits before LLM call
+      if (req.isAuthenticated() && req.user) {
+        const actualProvider = provider.toLowerCase() !== 'all' ? mapZhiToProvider(provider.toLowerCase()) : 'openai';
+        const creditResult = await checkAndDeductCredits(
+          req.user.id,
+          req.user.username,
+          actualProvider
+        );
+        
+        if (!creditResult.success) {
+          return res.status(402).json({
+            error: true,
+            message: creditResult.error,
+            formattedReport: `**Insufficient Credits**\n\n${creditResult.error}\n\n[Buy more credits](https://buy.stripe.com/cNibJ33W8ddG2Laa1sdZ600)`,
+            provider: provider
+          });
+        }
       }
       
       // If the user requests a specific single provider

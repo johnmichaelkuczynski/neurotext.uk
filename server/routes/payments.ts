@@ -161,6 +161,8 @@ export function registerPaymentRoutes(app: Express) {
           anthropic: 0,
           perplexity: 0,
           deepseek: 0,
+          stripe: 0,
+          total: 0,
           unlimited: false,
         });
       }
@@ -172,25 +174,32 @@ export function registerPaymentRoutes(app: Express) {
           anthropic: Infinity,
           perplexity: Infinity,
           deepseek: Infinity,
+          stripe: Infinity,
+          total: Infinity,
           unlimited: true,
         });
       }
 
       const credits = await storage.getAllUserCredits(req.user.id);
       
-      const balance = {
+      const balance: Record<string, number | boolean> = {
         openai: 0,
         anthropic: 0,
         perplexity: 0,
         deepseek: 0,
+        stripe: 0,
         unlimited: false,
+        total: 0,
       };
 
+      let total = 0;
       credits.forEach((credit) => {
         if (credit.provider in balance) {
           balance[credit.provider as Provider] = credit.credits;
         }
+        total += credit.credits;
       });
+      balance.total = total;
 
       res.json(balance);
     } catch (error: any) {
