@@ -2,12 +2,14 @@ import Stripe from "stripe";
 
 // Stripe is optional - app can run without payment functionality
 export const stripe = process.env.STRIPE_SECRET_KEY 
-  ? new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: "2025-09-30.clover",
-    })
+  ? new Stripe(process.env.STRIPE_SECRET_KEY)
   : null;
 
 export const isStripeConfigured = !!process.env.STRIPE_SECRET_KEY;
+
+// Log Stripe configuration status at module load
+console.log(`[Stripe] Configuration status: ${isStripeConfigured ? 'CONFIGURED' : 'NOT CONFIGURED'}`);
+console.log(`[Stripe] Webhook secret: ${process.env.STRIPE_WEBHOOK_SECRET ? 'SET' : 'NOT SET'}`);
 
 // Price schedule for credit packages
 export const CREDIT_PACKAGES = {
