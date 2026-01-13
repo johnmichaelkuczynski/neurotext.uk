@@ -1718,10 +1718,8 @@ DOES THE AUTHOR USE OTHER AUTHORS TO DEVELOP HIS IDEAS OR TO CLOAK HIS OWN LACK 
     setFullSuitePopupOpen(true);
     setFullSuiteActiveTab("reconstruction");
     
-    // ALSO open the streaming modal for real-time text output
-    setStreamingContent("");
-    setStreamingStartNew(true);
-    setStreamingModalOpen(true);
+    // NOTE: Do NOT open StreamingOutputModal here - Full Suite uses HTTP requests,
+    // not WebSocket streaming. The StreamingOutputModal expects WebSocket messages.
 
     const allModes = ["reconstruction"];
     
